@@ -3,7 +3,7 @@ import { eq, count, and } from "drizzle-orm";
 import { db, campaignsTable, prospectsTable, emailsTable, activityTable } from "@workspace/db";
 import {
   CreateCampaignBody,
-  CampaignUpdate,
+  UpdateCampaignBody,
   GetCampaignParams,
   UpdateCampaignParams,
   DeleteCampaignParams,
@@ -11,6 +11,7 @@ import {
   GetCampaignResponse,
   UpdateCampaignResponse,
 } from "@workspace/api-zod";
+import { serializeDates } from "../lib/serialize";
 
 const router: IRouter = Router();
 
@@ -37,7 +38,7 @@ router.get("/campaigns", async (_req, res): Promise<void> => {
     })
   );
 
-  res.json(ListCampaignsResponse.parse(result));
+  res.json(ListCampaignsResponse.parse(serializeDates(result)));
 });
 
 router.post("/campaigns", async (req, res): Promise<void> => {
@@ -56,7 +57,7 @@ router.post("/campaigns", async (req, res): Promise<void> => {
   });
 
   const response = { ...campaign, prospectCount: 0, emailsSent: 0 };
-  res.status(201).json(GetCampaignResponse.parse(response));
+  res.status(201).json(GetCampaignResponse.parse(serializeDates(response)));
 });
 
 router.get("/campaigns/:id", async (req, res): Promise<void> => {
@@ -92,7 +93,7 @@ router.get("/campaigns/:id", async (req, res): Promise<void> => {
     emailsSent: Number(emailsSent),
   };
 
-  res.json(GetCampaignResponse.parse(result));
+  res.json(GetCampaignResponse.parse(serializeDates(result)));
 });
 
 router.patch("/campaigns/:id", async (req, res): Promise<void> => {
@@ -102,7 +103,7 @@ router.patch("/campaigns/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const parsed = CampaignUpdate.safeParse(req.body);
+  const parsed = UpdateCampaignBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -135,7 +136,7 @@ router.patch("/campaigns/:id", async (req, res): Promise<void> => {
     emailsSent: Number(emailsSent),
   };
 
-  res.json(UpdateCampaignResponse.parse(result));
+  res.json(UpdateCampaignResponse.parse(serializeDates(result)));
 });
 
 router.delete("/campaigns/:id", async (req, res): Promise<void> => {

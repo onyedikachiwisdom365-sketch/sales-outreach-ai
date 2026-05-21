@@ -1,6 +1,6 @@
-# [Project name]
+# AI Sales Assistant
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A web app for small SaaS sales teams that manages prospects, organizes outreach campaigns, and drafts personalized emails using AI.
 
 ## Run & Operate
 
@@ -19,18 +19,33 @@ _Replace the heading above with the project's name, and this line with one sente
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
+- Frontend: React + Vite + Tailwind + shadcn/ui + Wouter + React Query
+- AI: OpenAI via Replit AI Integrations (falls back to template-based generation)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- OpenAPI spec: `lib/api-spec/openapi.yaml`
+- DB schema: `lib/db/src/schema/` (prospects, campaigns, emails, activity)
+- API routes: `artifacts/api-server/src/routes/` (prospects, campaigns, emails, stats, health)
+- AI email helper: `artifacts/api-server/src/lib/ai.ts`
+- Frontend pages: `artifacts/sales-assistant/src/pages/`
+- Generated hooks: `lib/api-client-react/src/generated/api.ts`
+- Generated Zod schemas: `lib/api-zod/src/generated/api.ts`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- OpenAPI-first: all types generated from `lib/api-spec/openapi.yaml`; never hand-write what codegen produces
+- AI email generation uses `gpt-5.2` via Replit AI Integrations; gracefully falls back to tone-matched templates if unavailable
+- Activity log table records all key events (prospect created, email sent, status changed) for the activity feed
+- Sending an email auto-advances prospect status from "new" to "contacted"
+- Email list endpoint joins prospect name/email/company at query time (denormalized in response for UI convenience)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Dashboard**: Stats overview (prospects, emails sent, open rate, drafts), recent activity feed, prospects by status chart
+- **Prospects**: Full CRUD with status pipeline (new/contacted/replied/qualified/unqualified), AI email generation with tone selector
+- **Campaigns**: Organize outreach with goals and status tracking; shows prospect count and emails sent per campaign
+- **Emails**: View/edit drafts and sent emails across all campaigns; one-click send action
 
 ## User preferences
 
@@ -38,7 +53,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Always run `pnpm --filter @workspace/api-spec run codegen` after changing `lib/api-spec/openapi.yaml`
+- Always run `pnpm run typecheck:libs` after changing `lib/db/src/schema/` to rebuild the db package before typechecking server routes
+- `UpdateProspectBody` / `UpdateCampaignBody` / `UpdateEmailBody` are the Zod validator names for PATCH bodies (not `ProspectUpdate` etc.)
 
 ## Pointers
 

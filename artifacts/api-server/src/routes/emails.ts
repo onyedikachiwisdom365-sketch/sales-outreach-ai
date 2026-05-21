@@ -3,7 +3,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { db, emailsTable, prospectsTable, activityTable } from "@workspace/db";
 import {
   CreateEmailBody,
-  EmailUpdate,
+  UpdateEmailBody,
   GetEmailParams,
   UpdateEmailParams,
   DeleteEmailParams,
@@ -14,6 +14,7 @@ import {
   UpdateEmailResponse,
   SendEmailResponse,
 } from "@workspace/api-zod";
+import { serializeDates } from "../lib/serialize";
 
 const router: IRouter = Router();
 
@@ -48,7 +49,7 @@ router.get("/emails", async (req, res): Promise<void> => {
     : await db.select().from(emailsTable).orderBy(desc(emailsTable.createdAt));
 
   const enriched = await Promise.all(emails.map(enrichEmail));
-  res.json(ListEmailsResponse.parse(enriched));
+  res.json(ListEmailsResponse.parse(serializeDates(enriched)));
 });
 
 router.post("/emails", async (req, res): Promise<void> => {
@@ -60,7 +61,7 @@ router.post("/emails", async (req, res): Promise<void> => {
 
   const [email] = await db.insert(emailsTable).values(parsed.data).returning();
   const enriched = await enrichEmail(email);
-  res.status(201).json(GetEmailResponse.parse(enriched));
+  res.status(201).json(GetEmailResponse.parse(serializeDates(enriched)));
 });
 
 router.get("/emails/:id", async (req, res): Promise<void> => {
@@ -81,7 +82,7 @@ router.get("/emails/:id", async (req, res): Promise<void> => {
   }
 
   const enriched = await enrichEmail(email);
-  res.json(GetEmailResponse.parse(enriched));
+  res.json(GetEmailResponse.parse(serializeDates(enriched)));
 });
 
 router.patch("/emails/:id", async (req, res): Promise<void> => {
@@ -91,7 +92,7 @@ router.patch("/emails/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const parsed = EmailUpdate.safeParse(req.body);
+  const parsed = UpdateEmailBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -109,7 +110,7 @@ router.patch("/emails/:id", async (req, res): Promise<void> => {
   }
 
   const enriched = await enrichEmail(email);
-  res.json(UpdateEmailResponse.parse(enriched));
+  res.json(UpdateEmailResponse.parse(serializeDates(enriched)));
 });
 
 router.delete("/emails/:id", async (req, res): Promise<void> => {
@@ -164,7 +165,7 @@ router.post("/emails/:id/send", async (req, res): Promise<void> => {
     .set({ status: "contacted" })
     .where(and(eq(prospectsTable.id, email.prospectId), eq(prospectsTable.status, "new")));
 
-  res.json(SendEmailResponse.parse(enriched));
+  res.json(SendEmailResponse.parse(serializeDates(enriched)));
 });
 
 export default router;

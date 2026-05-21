@@ -7,6 +7,11 @@ import NotFound from "@/pages/not-found";
 
 import Dashboard from "@/pages/dashboard";
 import ProspectsList from "@/pages/prospects";
+import ProspectDetail from "@/pages/prospect-detail";
+import CampaignsList from "@/pages/campaigns";
+import CampaignDetail from "@/pages/campaign-detail";
+import EmailsList from "@/pages/emails";
+import EmailDetail from "@/pages/email-detail";
 
 const queryClient = new QueryClient();
 
@@ -16,13 +21,11 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/prospects" component={ProspectsList} />
-        {/*
         <Route path="/prospects/:id" component={ProspectDetail} />
         <Route path="/campaigns" component={CampaignsList} />
         <Route path="/campaigns/:id" component={CampaignDetail} />
         <Route path="/emails" component={EmailsList} />
         <Route path="/emails/:id" component={EmailDetail} />
-        */}
         <Route component={NotFound} />
       </Switch>
     </Layout>

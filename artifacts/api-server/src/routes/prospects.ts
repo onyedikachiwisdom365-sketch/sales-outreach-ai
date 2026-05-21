@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, desc } from "drizzle-orm";
-import { db, prospectsTable, activityTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { db, prospectsTable, activityTable, emailsTable } from "@workspace/db";
 import {
   CreateProspectBody,
-  ProspectUpdate,
+  UpdateProspectBody,
   GetProspectParams,
   UpdateProspectParams,
   DeleteProspectParams,
@@ -16,6 +16,7 @@ import {
   GenerateEmailForProspectResponse,
 } from "@workspace/api-zod";
 import { generateEmailWithAI } from "../lib/ai";
+import { serializeDates } from "../lib/serialize";
 
 const router: IRouter = Router();
 
@@ -37,7 +38,7 @@ router.get("/prospects", async (req, res): Promise<void> => {
     return true;
   });
 
-  res.json(ListProspectsResponse.parse(filtered));
+  res.json(ListProspectsResponse.parse(serializeDates(filtered)));
 });
 
 router.post("/prospects", async (req, res): Promise<void> => {
@@ -56,7 +57,7 @@ router.post("/prospects", async (req, res): Promise<void> => {
     campaignId: prospect.campaignId ?? undefined,
   });
 
-  res.status(201).json(GetProspectResponse.parse(prospect));
+  res.status(201).json(GetProspectResponse.parse(serializeDates(prospect)));
 });
 
 router.get("/prospects/:id", async (req, res): Promise<void> => {
@@ -76,7 +77,7 @@ router.get("/prospects/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetProspectResponse.parse(prospect));
+  res.json(GetProspectResponse.parse(serializeDates(prospect)));
 });
 
 router.patch("/prospects/:id", async (req, res): Promise<void> => {
@@ -86,7 +87,7 @@ router.patch("/prospects/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const parsed = ProspectUpdate.safeParse(req.body);
+  const parsed = UpdateProspectBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -112,7 +113,7 @@ router.patch("/prospects/:id", async (req, res): Promise<void> => {
     });
   }
 
-  res.json(UpdateProspectResponse.parse(prospect));
+  res.json(UpdateProspectResponse.parse(serializeDates(prospect)));
 });
 
 router.delete("/prospects/:id", async (req, res): Promise<void> => {
@@ -164,7 +165,6 @@ router.post("/prospects/:id/generate-email", async (req, res): Promise<void> => 
     context: body.data.context,
   });
 
-  const { emailsTable } = await import("@workspace/db");
   const [email] = await db
     .insert(emailsTable)
     .values({
@@ -190,7 +190,7 @@ router.post("/prospects/:id/generate-email", async (req, res): Promise<void> => 
     prospectCompany: prospect.company,
   };
 
-  res.json(GenerateEmailForProspectResponse.parse(result));
+  res.json(GenerateEmailForProspectResponse.parse(serializeDates(result)));
 });
 
 export default router;

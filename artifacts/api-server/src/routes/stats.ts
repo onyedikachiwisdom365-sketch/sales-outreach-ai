@@ -6,6 +6,7 @@ import {
   GetRecentActivityQueryParams,
   GetRecentActivityResponse,
 } from "@workspace/api-zod";
+import { serializeDates } from "../lib/serialize";
 
 const router: IRouter = Router();
 
@@ -99,7 +100,7 @@ router.get("/activity", async (req, res): Promise<void> => {
     })
   );
 
-  res.json(GetRecentActivityResponse.parse(enriched));
+  res.json(GetRecentActivityResponse.parse(serializeDates(enriched)));
 });
 
 export default router;
