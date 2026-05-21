@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AI Sales Assistant API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: prospects
+    description: Prospect management
+  - name: campaigns
+    description: Campaign management
+  - name: emails
+    description: Email management
+  - name: stats
+    description: Dashboard statistics
 paths:
   /healthz:
     get:
@@ -24,6 +32,373 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /prospects:
+    get:
+      operationId: listProspects
+      tags: [prospects]
+      summary: List all prospects
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: campaignId
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: List of prospects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Prospect"
+    post:
+      operationId: createProspect
+      tags: [prospects]
+      summary: Create a prospect
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProspectInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prospect"
+
+  /prospects/{id}:
+    get:
+      operationId: getProspect
+      tags: [prospects]
+      summary: Get a prospect
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Prospect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prospect"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateProspect
+      tags: [prospects]
+      summary: Update a prospect
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProspectUpdate"
+      responses:
+        "200":
+          description: Updated prospect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prospect"
+    delete:
+      operationId: deleteProspect
+      tags: [prospects]
+      summary: Delete a prospect
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /prospects/{id}/generate-email:
+    post:
+      operationId: generateEmailForProspect
+      tags: [prospects]
+      summary: Generate a personalized email draft for a prospect using AI
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateEmailRequest"
+      responses:
+        "200":
+          description: Generated email draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      summary: List all campaigns
+      responses:
+        "200":
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+    post:
+      operationId: createCampaign
+      tags: [campaigns]
+      summary: Create a campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{id}:
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      summary: Get a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCampaign
+      tags: [campaigns]
+      summary: Update a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+    delete:
+      operationId: deleteCampaign
+      tags: [campaigns]
+      summary: Delete a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /emails:
+    get:
+      operationId: listEmails
+      tags: [emails]
+      summary: List emails, optionally filtered by prospect or campaign
+      parameters:
+        - name: prospectId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: campaignId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of emails
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Email"
+    post:
+      operationId: createEmail
+      tags: [emails]
+      summary: Create an email draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+
+  /emails/{id}:
+    get:
+      operationId: getEmail
+      tags: [emails]
+      summary: Get an email
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateEmail
+      tags: [emails]
+      summary: Update an email draft
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+    delete:
+      operationId: deleteEmail
+      tags: [emails]
+      summary: Delete an email
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /emails/{id}/send:
+    post:
+      operationId: sendEmail
+      tags: [emails]
+      summary: Mark an email as sent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sent email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Email"
+
+  /stats:
+    get:
+      operationId: getDashboardStats
+      tags: [stats]
+      summary: Get dashboard summary statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /activity:
+    get:
+      operationId: getRecentActivity
+      tags: [stats]
+      summary: Get recent activity feed
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +409,234 @@ components:
       required:
         - status
 
+    Prospect:
+      type: object
+      required: [id, name, email, status, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        company:
+          type: ["string", "null"]
+        role:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        linkedin:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [new, contacted, replied, qualified, unqualified]
+        campaignId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    ProspectInput:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        company:
+          type: string
+        role:
+          type: string
+        website:
+          type: string
+        linkedin:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+        campaignId:
+          type: ["integer", "null"]
+
+    ProspectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        company:
+          type: string
+        role:
+          type: string
+        website:
+          type: string
+        linkedin:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+        campaignId:
+          type: ["integer", "null"]
+
+    Campaign:
+      type: object
+      required: [id, name, status, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        goal:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, active, paused, completed]
+        prospectCount:
+          type: integer
+        emailsSent:
+          type: integer
+        createdAt:
+          type: string
+
+    CampaignInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        goal:
+          type: string
+        status:
+          type: string
+
+    CampaignUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        goal:
+          type: string
+        status:
+          type: string
+
+    Email:
+      type: object
+      required: [id, prospectId, subject, body, status, createdAt]
+      properties:
+        id:
+          type: integer
+        prospectId:
+          type: integer
+        campaignId:
+          type: ["integer", "null"]
+        subject:
+          type: string
+        body:
+          type: string
+        status:
+          type: string
+          enum: [draft, sent, opened, replied, bounced]
+        sentAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        prospectName:
+          type: ["string", "null"]
+        prospectEmail:
+          type: ["string", "null"]
+        prospectCompany:
+          type: ["string", "null"]
+
+    EmailInput:
+      type: object
+      required: [prospectId, subject, body]
+      properties:
+        prospectId:
+          type: integer
+        campaignId:
+          type: ["integer", "null"]
+        subject:
+          type: string
+        body:
+          type: string
+
+    EmailUpdate:
+      type: object
+      properties:
+        subject:
+          type: string
+        body:
+          type: string
+        status:
+          type: string
+
+    GenerateEmailRequest:
+      type: object
+      required: [tone]
+      properties:
+        tone:
+          type: string
+          enum: [professional, friendly, concise, persuasive]
+        campaignId:
+          type: ["integer", "null"]
+        context:
+          type: string
+
+    DashboardStats:
+      type: object
+      required: [totalProspects, totalCampaigns, emailsSent, emailsDraft, openRate, repliedCount, newProspectsThisWeek]
+      properties:
+        totalProspects:
+          type: integer
+        totalCampaigns:
+          type: integer
+        emailsSent:
+          type: integer
+        emailsDraft:
+          type: integer
+        openRate:
+          type: number
+        repliedCount:
+          type: integer
+        newProspectsThisWeek:
+          type: integer
+        prospectsByStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+
+    StatusCount:
+      type: object
+      required: [status, count]
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+
+    ActivityItem:
+      type: object
+      required: [id, type, description, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        description:
+          type: string
+        prospectName:
+          type: ["string", "null"]
+        campaignName:
+          type: ["string", "null"]
+        createdAt:
+          type: string

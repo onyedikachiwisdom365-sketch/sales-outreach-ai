@@ -1,0 +1,170 @@
+import { Router, type IRouter } from "express";
+import { eq, and, desc } from "drizzle-orm";
+import { db, emailsTable, prospectsTable, activityTable } from "@workspace/db";
+import {
+  CreateEmailBody,
+  EmailUpdate,
+  GetEmailParams,
+  UpdateEmailParams,
+  DeleteEmailParams,
+  SendEmailParams,
+  ListEmailsQueryParams,
+  ListEmailsResponse,
+  GetEmailResponse,
+  UpdateEmailResponse,
+  SendEmailResponse,
+} from "@workspace/api-zod";
+
+const router: IRouter = Router();
+
+async function enrichEmail(email: typeof emailsTable.$inferSelect) {
+  const [prospect] = await db
+    .select()
+    .from(prospectsTable)
+    .where(eq(prospectsTable.id, email.prospectId));
+
+  return {
+    ...email,
+    prospectName: prospect?.name ?? null,
+    prospectEmail: prospect?.email ?? null,
+    prospectCompany: prospect?.company ?? null,
+  };
+}
+
+router.get("/emails", async (req, res): Promise<void> => {
+  const query = ListEmailsQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: query.error.message });
+    return;
+  }
+
+  const conditions = [];
+  if (query.data.prospectId != null) conditions.push(eq(emailsTable.prospectId, query.data.prospectId));
+  if (query.data.campaignId != null) conditions.push(eq(emailsTable.campaignId, query.data.campaignId));
+  if (query.data.status) conditions.push(eq(emailsTable.status, query.data.status));
+
+  const emails = conditions.length > 0
+    ? await db.select().from(emailsTable).where(and(...conditions)).orderBy(desc(emailsTable.createdAt))
+    : await db.select().from(emailsTable).orderBy(desc(emailsTable.createdAt));
+
+  const enriched = await Promise.all(emails.map(enrichEmail));
+  res.json(ListEmailsResponse.parse(enriched));
+});
+
+router.post("/emails", async (req, res): Promise<void> => {
+  const parsed = CreateEmailBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [email] = await db.insert(emailsTable).values(parsed.data).returning();
+  const enriched = await enrichEmail(email);
+  res.status(201).json(GetEmailResponse.parse(enriched));
+});
+
+router.get("/emails/:id", async (req, res): Promise<void> => {
+  const params = GetEmailParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [email] = await db
+    .select()
+    .from(emailsTable)
+    .where(eq(emailsTable.id, params.data.id));
+
+  if (!email) {
+    res.status(404).json({ error: "Email not found" });
+    return;
+  }
+
+  const enriched = await enrichEmail(email);
+  res.json(GetEmailResponse.parse(enriched));
+});
+
+router.patch("/emails/:id", async (req, res): Promise<void> => {
+  const params = UpdateEmailParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = EmailUpdate.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [email] = await db
+    .update(emailsTable)
+    .set(parsed.data)
+    .where(eq(emailsTable.id, params.data.id))
+    .returning();
+
+  if (!email) {
+    res.status(404).json({ error: "Email not found" });
+    return;
+  }
+
+  const enriched = await enrichEmail(email);
+  res.json(UpdateEmailResponse.parse(enriched));
+});
+
+router.delete("/emails/:id", async (req, res): Promise<void> => {
+  const params = DeleteEmailParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [email] = await db
+    .delete(emailsTable)
+    .where(eq(emailsTable.id, params.data.id))
+    .returning();
+
+  if (!email) {
+    res.status(404).json({ error: "Email not found" });
+    return;
+  }
+
+  res.sendStatus(204);
+});
+
+router.post("/emails/:id/send", async (req, res): Promise<void> => {
+  const params = SendEmailParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [email] = await db
+    .update(emailsTable)
+    .set({ status: "sent", sentAt: new Date() })
+    .where(eq(emailsTable.id, params.data.id))
+    .returning();
+
+  if (!email) {
+    res.status(404).json({ error: "Email not found" });
+    return;
+  }
+
+  const enriched = await enrichEmail(email);
+
+  await db.insert(activityTable).values({
+    type: "email_sent",
+    description: `Email sent to ${enriched.prospectName ?? enriched.prospectEmail}`,
+    prospectId: email.prospectId,
+    campaignId: email.campaignId ?? undefined,
+  });
+
+  await db
+    .update(prospectsTable)
+    .set({ status: "contacted" })
+    .where(and(eq(prospectsTable.id, email.prospectId), eq(prospectsTable.status, "new")));
+
+  res.json(SendEmailResponse.parse(enriched));
+});
+
+export default router;
