@@ -46,10 +46,22 @@ export default function ProspectsList() {
   });
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: prospects, isLoading } = useListProspects();
+  const {
+    data: prospects = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useListProspects(undefined, {
+    query: {
+      queryKey: getListProspectsQueryKey(),
+      retry: 1,
+    },
+  });
   const createProspect = useCreateProspect();
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const filtered = prospects?.filter(p => 
+  const filtered = prospects.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) || 
     p.company?.toLowerCase().includes(search.toLowerCase()) ||
     p.email.toLowerCase().includes(search.toLowerCase())
@@ -73,6 +85,7 @@ export default function ProspectsList() {
 
   const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFormError(null);
     createProspect.mutate(
       {
         data: {
@@ -93,9 +106,10 @@ export default function ProspectsList() {
           toast({ title: "Prospect added", description: "The prospect was saved to your database." });
         },
         onError: () => {
+          setFormError("The prospect could not be saved. Please try again.");
           toast({
             title: "Could not add prospect",
-            description: "Please check the details and try again.",
+            description: "The API request failed. Please try again.",
             variant: "destructive",
           });
         },
@@ -193,6 +207,11 @@ export default function ProspectsList() {
                 placeholder="Context for your next conversation"
               />
             </div>
+            {formError && (
+              <p className="text-sm text-red-600" role="alert">
+                {formError}
+              </p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
                 Cancel
@@ -228,7 +247,22 @@ export default function ProspectsList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isError ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-32 text-center">
+                  <div className="space-y-3">
+                    <p className="text-red-600" role="alert">
+                      {error instanceof Error
+                        ? error.message
+                        : "Could not load prospects from the API."}
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => refetch()}>
+                      Try again
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-10 w-48" /></TableCell>
@@ -237,14 +271,14 @@ export default function ProspectsList() {
                   <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                 </TableRow>
               ))
-            ) : filtered?.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-32 text-center text-slate-500">
                   No prospects found
                 </TableCell>
               </TableRow>
             ) : (
-              filtered?.map((prospect) => (
+                filtered.map((prospect) => (
                 <TableRow key={prospect.id} className="group hover:bg-slate-50/50">
                   <TableCell>
                     <div className="flex items-center gap-3">
