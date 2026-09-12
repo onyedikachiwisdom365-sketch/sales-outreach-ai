@@ -52,10 +52,11 @@ export default function ProspectsList() {
     isError,
     error,
     refetch,
-  } = useListProspects(undefined, {
+    } = useListProspects(undefined, {
     query: {
       queryKey: getListProspectsQueryKey(),
       retry: 1,
+        refetchOnMount: "always",
     },
   });
   const createProspect = useCreateProspect();
@@ -99,8 +100,15 @@ export default function ProspectsList() {
         },
       },
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListProspectsQueryKey() });
+        onSuccess: (createdProspect) => {
+          queryClient.setQueryData(
+            getListProspectsQueryKey(),
+            (current: typeof prospects = []) => [
+              createdProspect,
+              ...current.filter((prospect) => prospect.id !== createdProspect.id),
+            ],
+          );
+          void queryClient.invalidateQueries({ queryKey: getListProspectsQueryKey() });
           setIsAddOpen(false);
           resetForm();
           toast({ title: "Prospect added", description: "The prospect was saved to your database." });
