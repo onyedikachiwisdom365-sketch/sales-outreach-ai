@@ -1,12 +1,28 @@
-import { useListProspects } from "@workspace/api-client-react";
+import {
+  getListProspectsQueryKey,
+  useCreateProspect,
+  useListProspects,
+} from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Search, Plus, Building2, Mail, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-100 text-blue-700 hover:bg-blue-100",
@@ -18,13 +34,74 @@ const statusColors: Record<string, string> = {
 
 export default function ProspectsList() {
   const [search, setSearch] = useState("");
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    company: "",
+    role: "",
+    website: "",
+    linkedin: "",
+    notes: "",
+  });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: prospects, isLoading } = useListProspects();
+  const createProspect = useCreateProspect();
 
   const filtered = prospects?.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
     p.company?.toLowerCase().includes(search.toLowerCase()) ||
     p.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  const updateField = (field: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const resetForm = () => {
+    setForm({
+      name: "",
+      email: "",
+      company: "",
+      role: "",
+      website: "",
+      linkedin: "",
+      notes: "",
+    });
+  };
+
+  const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    createProspect.mutate(
+      {
+        data: {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          ...(form.company.trim() && { company: form.company.trim() }),
+          ...(form.role.trim() && { role: form.role.trim() }),
+          ...(form.website.trim() && { website: form.website.trim() }),
+          ...(form.linkedin.trim() && { linkedin: form.linkedin.trim() }),
+          ...(form.notes.trim() && { notes: form.notes.trim() }),
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListProspectsQueryKey() });
+          setIsAddOpen(false);
+          resetForm();
+          toast({ title: "Prospect added", description: "The prospect was saved to your database." });
+        },
+        onError: () => {
+          toast({
+            title: "Could not add prospect",
+            description: "Please check the details and try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -33,11 +110,100 @@ export default function ProspectsList() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Prospects</h1>
           <p className="text-slate-500 mt-1">Manage your contacts and lead pipeline.</p>
         </div>
-        <Button className="gap-2 shadow-sm">
+        <Button className="gap-2 shadow-sm" onClick={() => setIsAddOpen(true)}>
           <Plus className="w-4 h-4" />
           Add Prospect
         </Button>
       </div>
+
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add a prospect</DialogTitle>
+            <DialogDescription>
+              Add a contact to your pipeline. Required fields are marked by the browser.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="prospect-name">Name</Label>
+                <Input
+                  id="prospect-name"
+                  value={form.name}
+                  onChange={(event) => updateField("name", event.target.value)}
+                  placeholder="Jane Doe"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prospect-email">Email</Label>
+                <Input
+                  id="prospect-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => updateField("email", event.target.value)}
+                  placeholder="jane@company.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prospect-company">Company</Label>
+                <Input
+                  id="prospect-company"
+                  value={form.company}
+                  onChange={(event) => updateField("company", event.target.value)}
+                  placeholder="Company name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prospect-role">Role</Label>
+                <Input
+                  id="prospect-role"
+                  value={form.role}
+                  onChange={(event) => updateField("role", event.target.value)}
+                  placeholder="Head of Sales"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prospect-website">Website</Label>
+                <Input
+                  id="prospect-website"
+                  value={form.website}
+                  onChange={(event) => updateField("website", event.target.value)}
+                  placeholder="company.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prospect-linkedin">LinkedIn</Label>
+                <Input
+                  id="prospect-linkedin"
+                  value={form.linkedin}
+                  onChange={(event) => updateField("linkedin", event.target.value)}
+                  placeholder="linkedin.com/in/janedoe"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="prospect-notes">Notes</Label>
+              <Textarea
+                id="prospect-notes"
+                value={form.notes}
+                onChange={(event) => updateField("notes", event.target.value)}
+                placeholder="Context for your next conversation"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createProspect.isPending}>
+                {createProspect.isPending ? "Saving..." : "Save Prospect"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="relative flex-1 max-w-md">

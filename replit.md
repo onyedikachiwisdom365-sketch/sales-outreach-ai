@@ -8,14 +8,14 @@ A web app for small SaaS sales teams that manages prospects, organizes outreach 
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/db run push` — update the SQLite schema from the Drizzle config (dev only)
+- SQLite database: `avion.db` at the project root
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- DB: SQLite (`avion.db`) + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
@@ -36,7 +36,9 @@ A web app for small SaaS sales teams that manages prospects, organizes outreach 
 
 - OpenAPI-first: all types generated from `lib/api-spec/openapi.yaml`; never hand-write what codegen produces
 - AI email generation uses `gpt-5.2` via Replit AI Integrations; gracefully falls back to tone-matched templates if unavailable
+- SQLite initializes the prospects, campaigns, emails, activity, and products tables at server startup
 - Activity log table records all key events (prospect created, email sent, status changed) for the activity feed
+- Product seed data is idempotently inserted at startup: Avion Outreach ($49), Avion CRM ($29), and Avion Analytics ($39)
 - Sending an email auto-advances prospect status from "new" to "contacted"
 - Email list endpoint joins prospect name/email/company at query time (denormalized in response for UI convenience)
 

@@ -64,7 +64,7 @@ export default function EmailDetail() {
   };
 
   const handleSend = () => {
-    sendEmail.mutate({ id: emailId, data: {} }, {
+    sendEmail.mutate({ id: emailId }, {
       onSuccess: () => {
         toast({ title: "Email sent successfully" });
         queryClient.invalidateQueries({ queryKey: getGetEmailQueryKey(emailId) });

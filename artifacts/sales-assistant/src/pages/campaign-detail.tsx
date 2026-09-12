@@ -3,6 +3,8 @@ import {
   useListEmails,
   useListProspects,
   getGetCampaignQueryKey,
+  getListEmailsQueryKey,
+  getListProspectsQueryKey,
 } from "@workspace/api-client-react";
 import { useRoute, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -29,11 +31,11 @@ export default function CampaignDetail() {
   });
 
   const { data: prospects, isLoading: prospectsLoading } = useListProspects({ campaignId }, {
-    query: { enabled: !!campaignId }
+    query: { enabled: !!campaignId, queryKey: getListProspectsQueryKey({ campaignId }) }
   });
 
   const { data: emails, isLoading: emailsLoading } = useListEmails({ campaignId }, {
-    query: { enabled: !!campaignId }
+    query: { enabled: !!campaignId, queryKey: getListEmailsQueryKey({ campaignId }) }
   });
 
   if (isLoading) {
