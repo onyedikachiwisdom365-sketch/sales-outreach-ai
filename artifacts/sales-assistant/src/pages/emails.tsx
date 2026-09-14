@@ -1,13 +1,31 @@
-import { useListEmails } from "@workspace/api-client-react";
+import {
+  getListEmailsQueryKey,
+  useCreateEmail,
+  useListEmails,
+  useListProspects,
+  useSendEmail,
+} from "@workspace/api-client-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Mail, ExternalLink, Clock, Target } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, Mail, ExternalLink, Clock, Send } from "lucide-react";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { format } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const emailStatusColors: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700",
@@ -19,13 +37,82 @@ const emailStatusColors: Record<string, string> = {
 
 export default function EmailsList() {
   const [search, setSearch] = useState("");
-  const { data: emails, isLoading } = useListEmails();
+  const [prospectId, setProspectId] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [composeError, setComposeError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: emails, isLoading, isError: emailsError } = useListEmails();
+  const {
+    data: prospects = [],
+    isLoading: prospectsLoading,
+    isError: prospectsError,
+  } = useListProspects();
+  const createEmail = useCreateEmail();
+  const sendEmail = useSendEmail();
+  const isSending = createEmail.isPending || sendEmail.isPending;
 
   const filtered = emails?.filter(e => 
     e.subject.toLowerCase().includes(search.toLowerCase()) || 
     e.prospectName?.toLowerCase().includes(search.toLowerCase()) ||
     e.prospectEmail?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback;
+
+  const resetComposer = () => {
+    setProspectId("");
+    setSubject("");
+    setBody("");
+    setComposeError(null);
+  };
+
+  const handleSend = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setComposeError(null);
+
+    const selectedProspectId = Number(prospectId);
+    if (!selectedProspectId || !subject.trim() || !body.trim()) {
+      setComposeError("Select a prospect and enter both a subject and body.");
+      return;
+    }
+
+    createEmail.mutate(
+      {
+        data: {
+          prospectId: selectedProspectId,
+          subject: subject.trim(),
+          body: body.trim(),
+        },
+      },
+      {
+        onSuccess: (createdEmail) => {
+          void queryClient.invalidateQueries({ queryKey: getListEmailsQueryKey() });
+          sendEmail.mutate(
+            { id: createdEmail.id },
+            {
+              onSuccess: () => {
+                void queryClient.invalidateQueries({ queryKey: getListEmailsQueryKey() });
+                resetComposer();
+                toast({ title: "Email sent", description: "SendGrid accepted the message." });
+              },
+              onError: (error) => {
+                void queryClient.invalidateQueries({ queryKey: getListEmailsQueryKey() });
+                setComposeError(
+                  getErrorMessage(error, "The draft was saved, but SendGrid could not send it."),
+                );
+              },
+            },
+          );
+        },
+        onError: (error) => {
+          setComposeError(getErrorMessage(error, "The email draft could not be saved."));
+        },
+      },
+    );
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -35,6 +122,75 @@ export default function EmailsList() {
           <p className="text-slate-500 mt-1">Review drafts, sent emails, and replies.</p>
         </div>
       </div>
+
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="border-b bg-slate-50/50">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Send className="h-4 w-4 text-primary" />
+            Send an email
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <form onSubmit={handleSend} className="space-y-5">
+            <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <div className="space-y-2">
+                <Label htmlFor="email-prospect">Prospect</Label>
+                <Select value={prospectId} onValueChange={setProspectId} disabled={prospectsLoading}>
+                  <SelectTrigger id="email-prospect">
+                    <SelectValue
+                      placeholder={prospectsLoading ? "Loading prospects..." : "Select a prospect"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prospects.map((prospect) => (
+                      <SelectItem key={prospect.id} value={String(prospect.id)}>
+                        {prospect.name} · {prospect.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {prospectsError && (
+                  <p className="text-sm text-red-600" role="alert">
+                    Could not load prospects. Refresh the page and try again.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email-subject">Subject</Label>
+                <Input
+                  id="email-subject"
+                  value={subject}
+                  onChange={(event) => setSubject(event.target.value)}
+                  placeholder="Following up on our conversation"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-body">Body</Label>
+              <Textarea
+                id="email-body"
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                placeholder="Write your message..."
+                className="min-h-32 resize-y"
+                required
+              />
+            </div>
+            {(composeError || emailsError) && (
+              <p className="text-sm text-red-600" role="alert">
+                {composeError || "Could not load the email list."}
+              </p>
+            )}
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isSending || prospectsLoading || prospects.length === 0} className="gap-2">
+                <Send className="h-4 w-4" />
+                {isSending ? "Sending..." : "Send email"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="relative flex-1 max-w-md">

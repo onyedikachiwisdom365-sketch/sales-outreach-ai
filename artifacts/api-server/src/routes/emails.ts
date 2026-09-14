@@ -15,6 +15,11 @@ import {
   SendEmailResponse,
 } from "@workspace/api-zod";
 import { serializeDates } from "../lib/serialize";
+import {
+  sendEmailWithSendGrid,
+  SendGridConfigurationError,
+  SendGridDeliveryError,
+} from "../lib/sendgrid";
 
 const router: IRouter = Router();
 
@@ -141,17 +146,63 @@ router.post("/emails/:id/send", async (req, res): Promise<void> => {
   }
 
   const [email] = await db
-    .update(emailsTable)
-    .set({ status: "sent", sentAt: new Date() })
-    .where(eq(emailsTable.id, params.data.id))
-    .returning();
+    .select()
+    .from(emailsTable)
+    .where(eq(emailsTable.id, params.data.id));
 
   if (!email) {
     res.status(404).json({ error: "Email not found" });
     return;
   }
 
+  if (email.status !== "draft") {
+    res.status(409).json({ error: `Email is already ${email.status} and cannot be sent again.` });
+    return;
+  }
+
   const enriched = await enrichEmail(email);
+
+  if (!enriched.prospectEmail) {
+    res.status(422).json({ error: "The selected prospect does not have an email address." });
+    return;
+  }
+
+  try {
+    await sendEmailWithSendGrid({
+      to: enriched.prospectEmail,
+      toName: enriched.prospectName,
+      subject: email.subject,
+      body: email.body,
+    });
+  } catch (error) {
+    if (error instanceof SendGridConfigurationError) {
+      req.log.error({ err: error, emailId: email.id }, "SendGrid is not configured");
+      res.status(503).json({ error: error.message });
+      return;
+    }
+
+    req.log.error(
+      {
+        err: error,
+        emailId: email.id,
+        prospectId: email.prospectId,
+        sendGridStatus: error instanceof SendGridDeliveryError ? error.status : undefined,
+      },
+      "SendGrid delivery failed",
+    );
+    res.status(502).json({
+      error: error instanceof SendGridDeliveryError
+        ? error.message
+        : "SendGrid delivery failed. Check the API server logs.",
+    });
+    return;
+  }
+
+  const [sentEmail] = await db
+    .update(emailsTable)
+    .set({ status: "sent", sentAt: new Date() })
+    .where(eq(emailsTable.id, email.id))
+    .returning();
 
   await db.insert(activityTable).values({
     type: "email_sent",
@@ -165,7 +216,7 @@ router.post("/emails/:id/send", async (req, res): Promise<void> => {
     .set({ status: "contacted" })
     .where(and(eq(prospectsTable.id, email.prospectId), eq(prospectsTable.status, "new")));
 
-  res.json(SendEmailResponse.parse(serializeDates(enriched)));
+  res.json(SendEmailResponse.parse(serializeDates({ ...sentEmail, ...enriched })));
 });
 
 export default router;

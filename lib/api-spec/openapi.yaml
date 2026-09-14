@@ -351,7 +351,7 @@ paths:
     post:
       operationId: sendEmail
       tags: [emails]
-      summary: Mark an email as sent
+      summary: Send an email through SendGrid and mark it as sent
       parameters:
         - name: id
           in: path
@@ -365,6 +365,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Email"
+        "502":
+          description: SendGrid rejected the email
+        "503":
+          description: SendGrid is not configured
 
   /stats:
     get:

@@ -1324,7 +1324,7 @@ export const getSendEmailUrl = (id: number,) => {
 }
 
 /**
- * @summary Mark an email as sent
+ * @summary Send an email through SendGrid and mark it as sent
  */
 export const sendEmail = async (id: number, options?: RequestInit): Promise<Email> => {
 
@@ -1340,7 +1340,7 @@ export const sendEmail = async (id: number, options?: RequestInit): Promise<Emai
 
 
 
-export const getSendEmailMutationOptions = <TError = ErrorType<unknown>,
+export const getSendEmailMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEmail>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sendEmail>>, TError,{id: number}, TContext> => {
 
@@ -1369,12 +1369,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SendEmailMutationResult = NonNullable<Awaited<ReturnType<typeof sendEmail>>>
 
-    export type SendEmailMutationError = ErrorType<unknown>
+    export type SendEmailMutationError = ErrorType<void>
 
     /**
- * @summary Mark an email as sent
+ * @summary Send an email through SendGrid and mark it as sent
  */
-export const useSendEmail = <TError = ErrorType<unknown>,
+export const useSendEmail = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEmail>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof sendEmail>>,
