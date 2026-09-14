@@ -43,3 +43,4 @@ channel = "stable-25_05"
 [userenv.shared]
 SMTP_HOST = "smtp-relay.brevo.com"
 SMTP_PORT = "587"
+SMTP_USER = "b90e8c001@smtp-brevo.com"
