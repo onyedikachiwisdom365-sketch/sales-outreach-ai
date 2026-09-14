@@ -324,7 +324,7 @@ export const DeleteEmailParams = zod.object({
 
 
 /**
- * @summary Send an email through SendGrid and mark it as sent
+ * @summary Send an email through SMTP and mark it as sent
  */
 export const SendEmailParams = zod.object({
   "id": zod.coerce.number()

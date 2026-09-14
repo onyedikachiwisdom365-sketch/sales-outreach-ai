@@ -16,10 +16,9 @@ import {
 } from "@workspace/api-zod";
 import { serializeDates } from "../lib/serialize";
 import {
-  sendEmailWithSendGrid,
-  SendGridConfigurationError,
-  SendGridDeliveryError,
-} from "../lib/sendgrid";
+  sendEmailWithSmtp,
+  SmtpConfigurationError,
+} from "../lib/smtp";
 
 const router: IRouter = Router();
 
@@ -168,15 +167,15 @@ router.post("/emails/:id/send", async (req, res): Promise<void> => {
   }
 
   try {
-    await sendEmailWithSendGrid({
+    await sendEmailWithSmtp({
       to: enriched.prospectEmail,
       toName: enriched.prospectName,
       subject: email.subject,
       body: email.body,
     });
   } catch (error) {
-    if (error instanceof SendGridConfigurationError) {
-      req.log.error({ err: error, emailId: email.id }, "SendGrid is not configured");
+    if (error instanceof SmtpConfigurationError) {
+      req.log.error({ err: error, emailId: email.id }, "SMTP is not configured");
       res.status(503).json({ error: error.message });
       return;
     }
@@ -186,14 +185,13 @@ router.post("/emails/:id/send", async (req, res): Promise<void> => {
         err: error,
         emailId: email.id,
         prospectId: email.prospectId,
-        sendGridStatus: error instanceof SendGridDeliveryError ? error.status : undefined,
       },
-      "SendGrid delivery failed",
+      "SMTP delivery failed",
     );
     res.status(502).json({
-      error: error instanceof SendGridDeliveryError
+      error: error instanceof Error
         ? error.message
-        : "SendGrid delivery failed. Check the API server logs.",
+        : "SMTP delivery failed. Check the API server logs.",
     });
     return;
   }

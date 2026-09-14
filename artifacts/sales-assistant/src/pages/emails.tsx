@@ -41,6 +41,7 @@ export default function EmailsList() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [composeError, setComposeError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: emails, isLoading, isError: emailsError } = useListEmails();
@@ -72,6 +73,7 @@ export default function EmailsList() {
   const handleSend = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setComposeError(null);
+    setSuccessMessage(null);
 
     const selectedProspectId = Number(prospectId);
     if (!selectedProspectId || !subject.trim() || !body.trim()) {
@@ -96,12 +98,13 @@ export default function EmailsList() {
               onSuccess: () => {
                 void queryClient.invalidateQueries({ queryKey: getListEmailsQueryKey() });
                 resetComposer();
-                toast({ title: "Email sent", description: "SendGrid accepted the message." });
+                setSuccessMessage("Email sent successfully");
+                toast({ title: "Email sent successfully" });
               },
               onError: (error) => {
                 void queryClient.invalidateQueries({ queryKey: getListEmailsQueryKey() });
                 setComposeError(
-                  getErrorMessage(error, "The draft was saved, but SendGrid could not send it."),
+                  getErrorMessage(error, "The draft was saved, but the SMTP server could not send it."),
                 );
               },
             },
@@ -180,6 +183,11 @@ export default function EmailsList() {
             {(composeError || emailsError) && (
               <p className="text-sm text-red-600" role="alert">
                 {composeError || "Could not load the email list."}
+              </p>
+            )}
+            {successMessage && (
+              <p className="text-sm text-emerald-600" role="status">
+                {successMessage}
               </p>
             )}
             <div className="flex justify-end">
