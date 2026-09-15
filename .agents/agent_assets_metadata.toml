@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "8Use7VdLFP2wVptpS2Iae"
+uri = "file://.agents/outputs/sales-outreach-ai-source.zip"
+type = "unspecified"
+title = "sales-outreach-ai source ZIP"
+description = "Clean project source archive for uploading to GitHub. Dependencies, build output, Replit internals, logs, and credential-like files are excluded."
+logical_id = "fc27ecf5-ab32-4f2b-8d73-8a0fb6c619ad"
+content_hash = "sha256:e672fbf64c8ea20feda95d7eef1afd78f633b635f7c84d25976ec7b9c7ea29d5"
+size = 321396
+mtime_ms = 1789483273775
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:6da190fa-7116-4cbb-b2f7-a97c04a2e41a/fc27ecf5-ab32-4f2b-8d73-8a0fb6c619ad/b078b59e-252e-4319-bbe0-5cf0634671d2"
+storage_version_token = "1789483281484676"
+content_type = "application/octet-stream"
