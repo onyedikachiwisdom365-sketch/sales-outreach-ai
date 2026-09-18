@@ -1,13 +1,16 @@
 import express, { type Express } from "express";
 import cors from "cors";
+// @ts-ignore
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
+const pinoMw = (pinoHttp as any).default || (pinoHttp as any);
+
 const app: Express = express();
 
 app.use(
-  pinoHttp({
+  pinoMw({
     logger,
     serializers: {
       req(req) {
@@ -23,17 +26,11 @@ app.use(
         };
       },
     },
-  }),
+  })
 );
+
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-app.use("/api", (_req, res, next) => {
-  res.setHeader("Cache-Control", "no-store");
-  next();
-});
-
-app.use("/api", router);
+app.use(router);
 
 export default app;
